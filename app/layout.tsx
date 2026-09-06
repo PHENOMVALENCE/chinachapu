@@ -1,6 +1,5 @@
-import Footer from "@/components/layout/Footer";
-import Header from "@/components/layout/Header";
-import { CartProvider } from "@/context/CartContext";
+import AppChrome from "@/components/layout/AppChrome";
+import { RequestProvider } from "@/context/RequestContext";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -12,9 +11,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Bloom E-Commerce Template",
+  title: "ChinaChapu — Product requests",
   description:
-    "Discover a wide selection of trendy clothes, shoes and accessories on Bloom E-Commerce. Enjoy fast delivery and free returns. Shop now!",
+    "Browse ChinaChapu categories and request catalogue or custom products. No prices or customer accounts. Staff will contact you about availability.",
 };
 
 export default function RootLayout({
@@ -24,14 +23,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${inter.className}  antialiased flex flex-col min-h-screen`}
-      >
-        <CartProvider>
-          <Header />
-          <main className="flex-grow">{children}</main>
-          <Footer />
-        </CartProvider>
+      <body className={`${inter.className} antialiased flex flex-col min-h-screen`}>
+        <RequestProvider>
+          <AppChrome>{children}</AppChrome>
+        </RequestProvider>
       </body>
     </html>
   );
