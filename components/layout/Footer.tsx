@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <footer className="border-t border-border bg-background">
@@ -12,9 +14,14 @@ export default function Footer() {
             payments or show prices.
           </p>
         </div>
-        <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:justify-between">
+        <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>Template design attribution: Bloomtpl / ThemeWagon. Original README is preserved in the repository.</p>
-          <p>© {new Date().getFullYear()} ChinaChapu</p>
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <Link href="/admin/login" className="underline-offset-2 hover:text-foreground hover:underline">
+              Staff login
+            </Link>
+            <span>© {new Date().getFullYear()} ChinaChapu</span>
+          </p>
         </div>
       </div>
     </footer>

@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -31,6 +32,10 @@ export default function AdminLoginPage() {
     <div className="mx-auto flex min-h-screen max-w-md items-center px-4">
       <form onSubmit={onSubmit} className="w-full space-y-4 rounded-xl border p-6">
         <h1 className="text-2xl font-semibold">Staff sign in</h1>
+        <p className="text-sm text-muted-foreground">
+          For ChinaChapu staff only. Ask the owner to add your email to the staff list
+          and provision a password. There is no public registration.
+        </p>
         <label className="block text-sm font-medium">
           Email
           <Input className="mt-1" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
@@ -43,6 +48,9 @@ export default function AdminLoginPage() {
         <Button type="submit" className="w-full">
           Sign in
         </Button>
+        <Link href="/" className="block text-center text-sm text-muted-foreground underline-offset-2 hover:underline">
+          Back to catalogue
+        </Link>
       </form>
     </div>
   );

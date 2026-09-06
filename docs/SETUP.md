@@ -52,7 +52,9 @@ Set these in the Vercel project (never in git):
 - `CRON_SECRET` — at least 32 random characters (Vercel Cron sends `Authorization: Bearer CRON_SECRET`)
 - `SNIPPE_ENABLED=false` until a separately authorised live payment test
 
-Apply migrations with the Vercel build command (`prisma migrate deploy`). Provision staff after the first deploy. Register Snippe webhook `{APP_URL}/api/webhooks/snippe` when you are ready to receive events; leave initiation off.
+`vercel.json` installs with `npm ci`, migrates Prisma during build, deploys to `fra1`, and runs `/api/cron/maintenance` daily at 03:00 UTC. Vercel Cron sends `Authorization: Bearer CRON_SECRET`. Daily cron needs a paid Vercel plan; without it, schedule `npm run db:cleanup` and `npm run payments:sweep` yourself.
+
+Apply migrations with the Vercel build command (`prisma migrate deploy`). After the first deploy, provision staff (`npm run staff:provision`) against production Postgres and add the email to `STAFF_ALLOWLIST`. Open `/admin/login` from the site footer. Register Snippe webhook `{APP_URL}/api/webhooks/snippe` when you are ready to receive events; leave initiation off.
 
 Non-Vercel hosts must set `APP_REQUIRE_HOSTED=true` so isolated adapters cannot boot.
 

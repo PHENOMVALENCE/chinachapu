@@ -1,7 +1,6 @@
 import Catalogue from "@/components/home/Catalogue";
-import ContactForm from "@/components/request/ContactForm";
 import CustomRequest from "@/components/request/CustomRequest";
-import RequestReview from "@/components/request/RequestReview";
+import SendRequest from "@/components/request/SendRequest";
 import { listPublicCategories, listPublicProducts } from "@/lib/server/services/catalogue";
 
 export default async function Home({
@@ -26,9 +25,8 @@ export default async function Home({
             Request products from ChinaChapu
           </h1>
           <p className="text-base text-muted-foreground sm:text-lg">
-            Browse categories, add catalogue items or describe something else, then send
-            your name, email, and phone. Staff will contact you. There are no prices,
-            payments, or customer accounts on this site.
+            Place order on what you want, send your name and phone, and we will contact
+            you. No prices, payments, or accounts on this page.
           </p>
         </section>
         <Catalogue
@@ -38,9 +36,8 @@ export default async function Home({
           selectedProductId={selected?.id}
           unavailable={Boolean(params.product && !selected)}
         />
+        <SendRequest />
         <CustomRequest categories={categories} />
-        <RequestReview />
-        <ContactForm />
       </div>
     </div>
   );

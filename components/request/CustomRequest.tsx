@@ -72,63 +72,71 @@ export default function CustomRequest({ categories }: { categories: PublicCatego
     setDescription("");
     setPhoto(null);
     setError(null);
-    setStatus("Custom item added to your request.");
+    setStatus("Custom item added. Send your details above.");
+    document.getElementById("request")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
     <section id="custom" className="space-y-4 rounded-xl border bg-card p-4 sm:p-6">
       <h2 className="text-2xl font-semibold">Request something else</h2>
       <p className="text-muted-foreground">
-        Works even if the catalogue is empty. A product name and quantity are required.
+        Not in the list? Name it and add it. Quantity starts at 1.
       </p>
       <form onSubmit={onSubmit} className="space-y-4">
-        <label className="block text-sm font-medium">
-          Product name
-          <Input className="mt-1" value={name} onChange={(event) => setName(event.target.value)} required />
-        </label>
-        <label className="block text-sm font-medium">
-          Quantity
-          <Input
-            className="mt-1 max-w-32"
-            inputMode="numeric"
-            value={quantity}
-            onChange={(event) => setQuantity(event.target.value)}
-            required
-          />
-        </label>
-        <label className="block text-sm font-medium">
-          Category (optional)
-          <select
-            className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-          >
-            <option value="">No category</option>
-            {categories.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm font-medium">
-          Description (optional)
-          <Textarea
-            className="mt-1"
-            maxLength={2000}
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-        </label>
-        <label className="block text-sm font-medium">
-          Reference photo (optional, one JPEG/PNG/WebP, 4 MiB max)
-          <Input
-            className="mt-1"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
-          />
-        </label>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <label className="block flex-1 text-sm font-medium">
+            Product name
+            <Input className="mt-1" value={name} onChange={(event) => setName(event.target.value)} required />
+          </label>
+          <label className="block text-sm font-medium">
+            Quantity
+            <Input
+              className="mt-1 max-w-32"
+              inputMode="numeric"
+              value={quantity}
+              onChange={(event) => setQuantity(event.target.value)}
+              required
+            />
+          </label>
+        </div>
+        <details className="rounded-lg border px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium">Optional details</summary>
+          <div className="mt-3 space-y-3">
+            <label className="block text-sm font-medium">
+              Category (optional)
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                value={categoryId}
+                onChange={(event) => setCategoryId(event.target.value)}
+              >
+                <option value="">No category</option>
+                {categories.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm font-medium">
+              Description (optional)
+              <Textarea
+                className="mt-1"
+                maxLength={2000}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </label>
+            <label className="block text-sm font-medium">
+              Reference photo (optional, one JPEG/PNG/WebP, 4 MiB max)
+              <Input
+                className="mt-1"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+              />
+            </label>
+          </div>
+        </details>
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}
