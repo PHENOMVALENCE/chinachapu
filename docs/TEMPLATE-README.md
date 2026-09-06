@@ -29,9 +29,9 @@ pnpm dev
 bun dev
 ```
 
-## Author 
+## Author
 ```
-Design and code is completely written by Bloomtpl and development team. 
+Design and code is completely written by Bloomtpl and development team.
 ```
 
 ## License
