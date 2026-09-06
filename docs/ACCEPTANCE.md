@@ -29,7 +29,13 @@ These are implementation acceptance checks, not claims of passing tests. Use syn
 | Q02 | Empty catalogue, no search matches, failed image, empty request, API/loading errors have clear states |
 | Q03 | Restart app and reconnect browser; submitted order and images persist; contacts absent from localStorage/logs/URLs |
 | Q04 | Rate-limit boundaries return 429 with retry guidance; server inputs ignore no validation via direct API |
+| P01 | Staff publish/revoke/rotate a quote; customer token exchange hides the raw token; invalid/expired links leak no contacts |
+| P02 | Pay uses only the stored TZS amount; concurrent Pay and unknown create leave one unresolved attempt |
+| P03 | Malformed/missing/stale webhook signatures rejected; completed matching lookup credits once |
+| P04 | Wrong amount, currency, or reference goes to review; redirects never mark paid; `SNIPPE_ENABLED=false` blocks new sessions |
 
 Automate schema boundaries and status transitions as unit tests; transactions, idempotency, ownership, authorization, and optimistic updates as integration tests with real test persistence; guest-to-admin flow and mobile/accessibility checks as browser tests. Add regression checks for monetary UI and public payloads. Verify two simultaneous submissions/updates, not only sequential retries.
 
-Release evidence must record tool versions, commands/results, skipped checks with reasons, migration/seed results, and manual browser checks. Run lint separately from build, typecheck, test suites, and production build after scripts are added. Never label this documentation plan as a completed test suite.
+Automated Vitest coverage exists for validation, orders, uploads, public DTOs, Blob key isolation, quotes, sessions, and webhook HMAC. Guest-to-admin browser checks and live Snippe calls are still manual/skipped unless recorded separately.
+
+Release evidence must record tool versions, commands/results, skipped checks with reasons, migration/seed results, and manual browser checks. Never label this plan as a completed live-payment suite.

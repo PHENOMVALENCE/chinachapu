@@ -1,6 +1,6 @@
 # Catalogue and image brief
 
-Seed-content proposal for implementation; confirm availability/copy before launch. No monetary fields.
+Implemented seed catalogue (six categories, 18 products). Confirm availability/copy and photography rights before launch. No monetary fields. Provenance: [PRODUCT-IMAGE-SOURCES.md](PRODUCT-IMAGE-SOURCES.md).
 
 | Category / slug | Seed products | Optional notes |
 | --- | --- | --- |
@@ -11,8 +11,6 @@ Seed-content proposal for implementation; confirm availability/copy before launc
 | Accessories / accessories | Sunglasses; wristwatch; belt | Style, dimensions |
 | Home essentials / home-essentials | Insulated bottle; travel organiser; cushion cover | Capacity, colour |
 
-First four categories are required; last two are proposed additions. Custom requests may omit category.
+First four categories were required; accessories and home essentials are included in the seed. Custom requests may omit category.
 
-During implementation add one rights-cleared representative photo per product (18 with proposed categories). Use consistent square crops and accurate subjects, local optimised assets or public object storage, and responsive Next.js images with reserved dimensions. Avoid unstable hotlinks and misleading brand imagery.
-
-Maintain an asset manifest: product slug, filename/key, source URL or owner-provided origin, author, license/permission, retrieval date, alt text. Verify actual image rights. Example filename: `everyday-sneakers.webp`; alt text: “White low-top everyday sneakers”. Use a neutral local fallback. Customer reference images stay private and never automatically enter the catalogue. New images are deferred to implementation.
+Seed photographs live under `public/catalogue/` with a machine-readable manifest in `data/image-manifest.json`. Recheck Pexels rights for the intended usage. Customer reference images stay private and never automatically enter the catalogue. Staff may replace catalogue images through admin.

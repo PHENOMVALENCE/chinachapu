@@ -2,7 +2,7 @@
 
 ## Scope
 
-ChinaChapu is a single-page catalogue for guest product requests. Use Next.js for frontend and backend. This phase provides documentation for Cursor; the imported template is not the finished product.
+ChinaChapu is a single-page catalogue for guest product requests. Use Next.js for frontend and backend. The imported template is not the product; the implemented application is.
 
 Owner requirements: shoes, purses, clothes, perfumes, and additional suitable categories; product pictures; quantities; optional descriptions and reference pictures; custom products; guest name, email, and phone; staff dashboard for orders, customer details, and product creation/uploads. Never display prices. No customer account creation.
 
@@ -29,7 +29,7 @@ No separate customer checkout or required product-detail page. No prices, totals
 | Quantity | Integer 1–999, default 1; reject blank/fractional/negative values |
 | Custom item name | Required, trimmed, 2–150 characters |
 | Item description | Optional, at most 2,000 characters |
-| Reference image | Optional, one JPEG/PNG/WebP per item, at most 5 MiB |
+| Reference image | Optional, one JPEG/PNG/WebP per item, at most 4 MiB |
 | Request | 1–20 lines |
 
 Use matching client/server validation. Optional blanks must not block submission. Explain image limits before selection. Failed optional uploads may be retried or explicitly removed before continuing.
@@ -48,4 +48,6 @@ Statuses: new → contacted → sourcing → completed; any nonterminal status m
 
 Mobile-first, keyboard-operable controls, visible request count, labelled inputs, accessible error/success announcements, readable contrast, meaningful alt text, and loading/empty/no-results/unavailable/error states. Remove unverified template delivery, return, and support promises.
 
-Deferred: payments, pricing/quotations, customer accounts, public order lookup, inventory accounting, shipping, coupons, reviews, notifications, bulk exports, and multiple staff roles.
+Phase 2 exception: staff may publish a private TZS quote and share an expiring payment link. The public catalogue still has no product prices. Live Snippe initiation stays disabled until authorised.
+
+Still deferred: public product prices, customer accounts, deposits, payouts, refunds, public order lookup, inventory accounting, shipping, coupons, reviews, notifications, bulk exports, and multiple staff roles.

@@ -1,6 +1,6 @@
 # Data model and API contract
 
-Proposed schema; implementation must add migrations, constraints, and shared validation. No price, currency, subtotal, or payment columns.
+Implemented Prisma schema with additive migrations and shared Zod validation. Catalogue, order, and product tables have no price, currency, subtotal, or payment columns. Quote and payment tables are Phase 2 only and stay off the public catalogue.
 
 ## Entities
 
@@ -13,7 +13,14 @@ Proposed schema; implementation must add migrations, constraints, and shared val
 | Upload | UUID id, unique storageKey, purpose reference/catalogue, draft-owner hash or staff owner, MIME, bytes, dimensions, state pending/ready/claimed, expiry, nullable orderItemId; reference belongs to at most one item |
 | OrderEvent | UUID id, orderId FK, old/new status, staffId, timestamp; append-only |
 | StaffNote | UUID id, orderId FK, staffId, text (1–2,000), timestamp; private |
-| Staff identity/session | Managed by chosen auth library; explicit allowlist and server-verified role |
+| StaffUser | UUID id, unique email, password hash; login also requires `STAFF_ALLOWLIST` |
+| RateLimit | Hashed key, count, resetAt; used when `APP_PERSISTENCE=postgres` |
+| Quote | orderId, revision, integer TZS total, explanation, draft/published/superseded/revoked, expiresAt; unique order/revision |
+| PaymentAccess | quoteId, unique tokenHash, expiresAt, revokedAt; plaintext token never stored |
+| PaymentAttempt | quote/order FKs, immutable amount/currency, local status, unique provider refs when known |
+| WebhookInbox | unique eventId, payload hash, processing status |
+| PaymentLedger | unique provider payment ref; immutable completion evidence |
+| PaymentAudit | actor, action, optional order/quote/attempt ids |
 
 Index orders by createdAt and status/createdAt; index foreign keys and implement bounded contact/reference search. Contact fields are not unique: the same person can place multiple orders. Keep snapshots after product changes or archival. Never cascade product deletion into orders. Use database constraints for quantities, uniqueness, and ownership where possible.
 
@@ -27,7 +34,7 @@ Index orders by createdAt and status/createdAt; index foreign keys and implement
 | POST `/api/uploads/[id]/complete` | Verify owner and stored file; validate/re-encode; mark ready or reject |
 | POST `/api/orders` | Validated guest request; durable transactional creation; reference-only response |
 
-No public order list, contact lookup, image read endpoint, or order detail by reference.
+No public order list, contact lookup, or order detail by reference. Catalogue images may be served from `GET /api/media/public?key=` for `catalogue/*` keys only. Reference images are staff-only via `GET /api/admin/media`.
 
 Example `POST /api/orders` body (UUID values illustrative):
 
@@ -59,8 +66,16 @@ All require server-verified staff session. Paginate lists; max page size 100. Pr
 | PATCH `/api/admin/products/[id]` | Validated fields/state and version; publish/archival rules |
 | POST `/api/admin/uploads` | Staff-scoped catalogue upload authorisation |
 | POST `/api/admin/uploads/[id]/complete` | Validate and finalise staff catalogue image |
+| POST `/api/admin/orders/[id]/quotes` | Create/publish an immutable TZS quote revision |
+| POST `/api/admin/quotes/[id]/access` | Issue or rotate a private payment-access token (raw token returned once) |
+| POST `/api/admin/quotes/[id]/revoke` | Revoke access after outstanding-attempt checks |
+| POST `/api/admin/payments/[id]/reconcile` | Audited provider lookup |
+| GET `/pay/[token]` | Exchange token for scoped cookie; redirect to `/pay` |
+| POST `/api/payments/session` | Cookie-scoped hosted session create/resume; no client amount |
+| GET `/api/payments/status` | Cookie-scoped local payment state |
+| POST `/api/webhooks/snippe` | Raw-body HMAC; durable inbox |
 
-No hard-delete route in MVP. Auth endpoints follow the selected library, including logout. Signed private-image URLs must be short lived and excluded from logs.
+No hard-delete route in MVP. Auth is `POST /api/auth/login` and `POST /api/auth/logout`. Private media routes require staff and are no-store. Financial rows use Restrict deletes so order deletion cannot cascade quotes, attempts, or ledger entries.
 
 ## Error envelope
 

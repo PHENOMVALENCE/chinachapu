@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+}
+
+enum ProductState {
+  draft
+  active
+  archived
+}
+
+enum OrderStatus {
+  new
+  contacted
+  sourcing
+  completed
+  cancelled
+}
+
+enum OrderItemKind {
+  catalogue
+  custom
+}
+
+enum UploadPurpose {
+  reference
+  catalogue
+}
+
+enum UploadState {
+  pending
+  ready
+  claimed
+}
+
+model Category {
+  id        String    @id @default(uuid()) @db.Uuid
+  slug      String    @unique
+  name      String
+  sortOrder Int
+  products  Product[]
+}
+
+model Product {
+  id           String       @id @default(uuid()) @db.Uuid
+  slug         String       @unique
+  name         String
+  categoryId   String       @db.Uuid
+  category     Category     @relation(fields: [categoryId], references: [id])
+  description  String?
+  imageAssetId String?      @db.Uuid
+  imageAsset   Upload?      @relation(fields: [imageAssetId], references: [id])
+  altText      String?
+  state        ProductState @default(draft)
+  version      Int          @default(1)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  orderItems   OrderItem[]
+
+  @@index([categoryId])
+  @@index([state])
+}
+
+model Order {
+  id             String        @id @default(uuid()) @db.Uuid
+  reference      String        @unique
+  name           String
+  email          String
+  phone          String
+  status         OrderStatus   @default(new)
+  idempotencyKey String        @unique
+  requestHash    String
+  version        Int           @default(1)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  items          OrderItem[]
+  events         OrderEvent[]
+  notes          StaffNote[]
+  quotes         Quote[]
+  attempts       PaymentAttempt[]
+  ledger         PaymentLedger[]
+
+  @@index([createdAt])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id               String        @id @default(uuid()) @db.Uuid
+  orderId          String        @db.Uuid
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kind             OrderItemKind
+  productId        String?       @db.Uuid
+  product          Product?      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  nameSnapshot     String
+  categorySnapshot String?
+  quantity         Int
+  description      String?
+  upload           Upload?
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Upload {
+  id          String         @id @default(uuid()) @db.Uuid
+  storageKey  String         @unique
+  purpose     UploadPurpose
+  ownerHash   String
+  mime        String
+  bytes       Int
+  width       Int?
+  height      Int?
+  state       UploadState    @default(pending)
+  expiresAt   DateTime?
+  orderItemId String?        @unique @db.Uuid
+  orderItem   OrderItem?     @relation(fields: [orderItemId], references: [id])
+  products    Product[]
+  createdAt   DateTime       @default(now())
+
+  @@index([ownerHash])
+  @@index([state, expiresAt])
+}
+
+model OrderEvent {
+  id        String       @id @default(uuid()) @db.Uuid
+  orderId   String       @db.Uuid
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  oldStatus OrderStatus?
+  newStatus OrderStatus
+  staffId   String
+  createdAt DateTime     @default(now())
+
+  @@index([orderId])
+}
+
+model StaffNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  staffId   String
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model StaffUser {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+enum QuoteState {
+  draft
+  published
+  superseded
+  revoked
+}
+
+enum PaymentAttemptStatus {
+  creating
+  pending
+  succeeded
+  failed
+  expired
+  cancelled
+  unknown
+  review
+}
+
+enum WebhookInboxStatus {
+  received
+  processed
+  failed
+}
+
+model Quote {
+  id           String            @id @default(uuid()) @db.Uuid
+  orderId      String            @db.Uuid
+  order        Order             @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  revision     Int
+  total        Int
+  currency     String            @default("TZS")
+  explanation  String
+  state        QuoteState        @default(draft)
+  expiresAt    DateTime
+  actorId      String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  accessTokens PaymentAccess[]
+  attempts     PaymentAttempt[]
+  ledger       PaymentLedger[]
+
+  @@unique([orderId, revision])
+  @@index([orderId, state])
+}
+
+model PaymentAccess {
+  id        String    @id @default(uuid()) @db.Uuid
+  quoteId   String    @db.Uuid
+  quote     Quote     @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([quoteId])
+}
+
+model PaymentAttempt {
+  id                   String                @id @default(uuid()) @db.Uuid
+  orderId              String                @db.Uuid
+  order                Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  quoteId              String                @db.Uuid
+  quote                Quote                 @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  amount               Int
+  currency             String                @default("TZS")
+  status               PaymentAttemptStatus
+  providerSessionRef   String?               @unique
+  providerPaymentRef   String?               @unique
+  providerKey          String                @unique
+  requestHash          String
+  checkoutUrl          String?
+  expiresAt            DateTime?
+  providerStatus       String?
+  reconciliationReason String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  ledger               PaymentLedger[]
+
+  @@index([orderId, status])
+  @@index([quoteId, status])
+}
+
+model WebhookInbox {
+  id          String             @id @default(uuid()) @db.Uuid
+  eventId     String             @unique
+  payloadHash String
+  eventType   String
+  payload     String
+  status      WebhookInboxStatus @default(received)
+  error       String?
+  attempts    Int                @default(0)
+  receivedAt  DateTime           @default(now())
+  processedAt DateTime?
+}
+
+model PaymentLedger {
+  id                 String         @id @default(uuid()) @db.Uuid
+  providerPaymentRef String         @unique
+  attemptId          String         @db.Uuid
+  attempt            PaymentAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  quoteId            String         @db.Uuid
+  quote              Quote          @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  orderId            String         @db.Uuid
+  order              Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  amount             Int
+  currency           String
+  completedAt        DateTime
+  createdAt          DateTime       @default(now())
+}
+
+model PaymentAudit {
+  id        String   @id @default(uuid()) @db.Uuid
+  actorId   String
+  action    String
+  orderId   String?
+  quoteId   String?
+  attemptId String?
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
