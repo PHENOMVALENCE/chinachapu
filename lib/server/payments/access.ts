@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { getConfig } from "../config";
+import { cookieSecure, getConfig } from "../config";
 import { AppError } from "../errors";
 
 export const PAY_COOKIE = "cc_pay";
@@ -23,7 +23,7 @@ export async function createPayCookie(scope: PayScope, expiresAt: Date) {
   jar.set(PAY_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure(),
     path: "/",
     expires: expiresAt,
   });

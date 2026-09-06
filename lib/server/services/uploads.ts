@@ -82,7 +82,9 @@ export async function cleanupExpiredUploads(now = new Date()) {
   const expired = await repo.listExpiredUnclaimed(now);
   const storage = getStorage();
   for (const upload of expired) {
-    await storage.remove(upload.purpose === "catalogue" ? "public" : "private", upload.storageKey);
+    if (upload.state === "ready") {
+      await storage.remove(upload.purpose === "catalogue" ? "public" : "private", upload.storageKey);
+    }
   }
   if (expired.length > 0) {
     await repo.deleteUploads(expired.map((item) => item.id));

@@ -121,7 +121,7 @@ export default function CustomRequest({ categories }: { categories: PublicCatego
           />
         </label>
         <label className="block text-sm font-medium">
-          Reference photo (optional, one JPEG/PNG/WebP, 5 MiB max)
+          Reference photo (optional, one JPEG/PNG/WebP, 4 MiB max)
           <Input
             className="mt-1"
             type="file"

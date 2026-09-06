@@ -7,7 +7,7 @@ import { authoriseUpload } from "@/lib/server/services/uploads";
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
-    limitUploads(getClientIp(request));
+    await limitUploads(getClientIp(request));
     const body = await request.json();
     guardUnexpectedMoney(body);
     const draft = await getDraftOwnerHash(true);

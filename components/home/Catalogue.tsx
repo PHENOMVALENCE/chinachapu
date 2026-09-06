@@ -220,7 +220,7 @@ export default function Catalogue({
             />
           </label>
           <label className="block text-sm font-medium">
-            Reference photo (optional, one JPEG/PNG/WebP, 5 MiB max)
+            Reference photo (optional, one JPEG/PNG/WebP, 4 MiB max)
             <Input
               className="mt-1"
               type="file"
@@ -228,7 +228,7 @@ export default function Catalogue({
               onChange={(event) => {
                 const file = event.target.files?.[0] ?? null;
                 if (file && file.size > 5 * 1024 * 1024) {
-                  setPhotoError("Images must be 5 MiB or smaller.");
+                  setPhotoError("Images must be 4 MiB or smaller.");
                   setPhoto(null);
                   return;
                 }

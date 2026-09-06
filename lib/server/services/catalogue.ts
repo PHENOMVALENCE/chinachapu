@@ -2,6 +2,7 @@ import { LIMITS } from "@/lib/validation/limits";
 import { getRepository } from "../db";
 import { getStorage } from "../storage";
 import type { PublicCategory, PublicProduct } from "../types";
+import seedImages from "@/data/image-manifest.json";
 
 export async function listPublicCategories(): Promise<PublicCategory[]> {
   const categories = await getRepository().listCategories();
@@ -44,7 +45,7 @@ export async function listPublicProducts(options: {
       category: { id: category.id, slug: category.slug, name: category.name },
       description: product.description,
       image: upload
-        ? { url: publicImageUrl(upload.storageKey, storage.publicUrl(upload.storageKey)), alt: product.altText ?? product.name }
+        ? { url: publicImageUrl(upload.storageKey, storage.publicUrl(upload.storageKey)), alt: upload.storageKey.startsWith("seed/") ? seedImages.find((image) => image.slug === product.slug)?.alt ?? product.name : product.altText ?? product.name }
         : null,
     });
   }
@@ -54,6 +55,9 @@ export async function listPublicProducts(options: {
 
 function publicImageUrl(storageKey: string, storedUrl: string) {
   if (storageKey.startsWith("seed/")) {
+    const slug = storageKey.slice("seed/".length).replace(/\.(svg|jpg|webp|png)$/, "");
+    const photo = seedImages.find((image) => image.slug === slug);
+    if (photo) return `/catalogue/${photo.filename}`;
     return `/catalogue/${storageKey.slice("seed/".length)}`;
   }
   return storedUrl;
