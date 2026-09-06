@@ -12,6 +12,8 @@ export default defineConfig([
     "coverage/**",
     "node_modules/**",
     "prisma/migrations/**",
+    ".data/**",
+    ".agents/**",
     "next-env.d.ts",
   ]),
 ]);

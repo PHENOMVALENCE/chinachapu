@@ -21,7 +21,7 @@ import { UNRESOLVED_ATTEMPT_STATUSES } from "../types";
 
 let client: PrismaClient | undefined;
 
-function prisma() {
+export function prisma() {
   client ??= new PrismaClient();
   return client;
 }
@@ -186,6 +186,10 @@ export function createPrismaRepository(): Repository {
           },
         });
         for (const item of input.items) {
+          if (item.productId) {
+            const active = await tx.product.findFirst({ where: { id: item.productId, state: "active" } });
+            if (!active) throw new AppError(409, "CONFLICT", "A selected product is no longer available.");
+          }
           await tx.orderItem.create({
             data: {
               id: item.id,
@@ -199,10 +203,11 @@ export function createPrismaRepository(): Repository {
             },
           });
           if (item.uploadId) {
-            await tx.upload.update({
-              where: { id: item.uploadId },
+            const claimed = await tx.upload.updateMany({
+              where: { id: item.uploadId, state: "ready", orderItemId: null, expiresAt: { gt: new Date() } },
               data: { state: "claimed", orderItemId: item.id, expiresAt: null },
             });
+            if (claimed.count !== 1) throw new AppError(409, "CONFLICT", "This photo was already used or expired.");
           }
         }
         await tx.orderEvent.create({
@@ -369,6 +374,7 @@ export function createPrismaRepository(): Repository {
       const rows = await db.upload.findMany({
         where: {
           state: { not: "claimed" },
+          products: { none: {} },
           expiresAt: { lte: now },
         },
       });

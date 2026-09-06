@@ -7,7 +7,7 @@ import { createGuestOrder } from "@/lib/server/services/orders";
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
-    limitOrders(getClientIp(request));
+    await limitOrders(getClientIp(request));
     const body = await request.json();
     guardUnexpectedMoney(body);
     const draft = await getDraftOwnerHash(true);

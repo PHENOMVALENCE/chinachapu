@@ -178,7 +178,7 @@ export const uploadAuthoriseSchema = z
       .number()
       .int()
       .positive()
-      .max(LIMITS.imageBytes, "Images must be 5 MiB or smaller."),
+      .max(LIMITS.imageBytes, "Images must be 4 MiB or smaller."),
   })
   .strict();
 

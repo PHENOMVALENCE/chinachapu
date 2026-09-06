@@ -18,7 +18,8 @@ Staff sessions use signed HttpOnly JWT cookies (`jose`). There is no customer id
 
 ## Object storage
 
-- **Production adapter:** S3-compatible buckets (`STORAGE_ADAPTER=s3`) with separate public catalogue and private reference buckets.
+- **Production adapter (Vercel):** private Vercel Blob (`STORAGE_ADAPTER=blob`) plus `BLOB_READ_WRITE_TOKEN`. Catalogue reads go through `/api/media/public`; reference reads require staff.
+- **S3 adapter:** not implemented. Do not set `STORAGE_ADAPTER=s3` in production.
 - **Isolated adapter:** local files under `.data/storage/` (`STORAGE_ADAPTER=isolated`). Not a production store.
 
 Guest uploads are authorised into quarantine, validated, re-encoded, then claimed only inside the order transaction.
@@ -35,8 +36,26 @@ Set `SNIPPE_API_KEY` and `SNIPPE_WEBHOOK_SECRET` in the ignored server environme
 
 ## Rate limits
 
-In-process counters (10 orders and 20 guest upload authorisations per IP per hour; login throttled). Replace with shared store (for example Redis) before multi-instance production. Configure `RATE_LIMIT_STORE=memory` today.
+Hosted Postgres uses a shared `RateLimit` table so multiple instances share the same counters (10 orders and 20 guest upload authorisations per IP per hour; login throttled). Isolated/local tests still use in-process memory. `npm run payments:sweep` and `/api/cron/maintenance` expire leftover rows.
+
+## Hosted production (Vercel)
+
+Set these in the Vercel project (never in git):
+
+- `APP_URL` — public HTTPS origin
+- `APP_PERSISTENCE=postgres`
+- `DATABASE_URL` — hosted PostgreSQL
+- `AUTH_SECRET` — at least 32 random characters
+- `STAFF_ALLOWLIST` — provisioned staff emails
+- `STORAGE_ADAPTER=blob`
+- `BLOB_READ_WRITE_TOKEN`
+- `CRON_SECRET` — at least 32 random characters (Vercel Cron sends `Authorization: Bearer CRON_SECRET`)
+- `SNIPPE_ENABLED=false` until a separately authorised live payment test
+
+Apply migrations with the Vercel build command (`prisma migrate deploy`). Provision staff after the first deploy. Register Snippe webhook `{APP_URL}/api/webhooks/snippe` when you are ready to receive events; leave initiation off.
+
+Non-Vercel hosts must set `APP_REQUIRE_HOSTED=true` so isolated adapters cannot boot.
 
 ## Node
 
-Proposed baseline is Node.js 22 LTS. Next.js runs on port 3000.
+Baseline is Node.js 22 LTS. Local Next.js runs on port 3000.

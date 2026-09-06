@@ -2,7 +2,7 @@ import { compare, hash } from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { LIMITS } from "@/lib/validation/limits";
-import { getConfig } from "./config";
+import { cookieSecure, getConfig } from "./config";
 import { getRepository } from "./db";
 import { AppError } from "./errors";
 import { createId } from "./ids";
@@ -100,7 +100,7 @@ export async function getDraftOwnerHash(createIfMissing = true): Promise<string>
   jar.set(DRAFT_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure(),
     path: "/",
     maxAge: 60 * 60 * 24,
   });

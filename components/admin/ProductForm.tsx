@@ -92,7 +92,7 @@ export default function ProductForm({
         <Input name="altText" className="mt-1" defaultValue={product?.altText ?? ""} />
       </label>
       <label className="block text-sm font-medium">
-        Catalogue image (JPEG/PNG/WebP, 5 MiB max)
+        Catalogue image (JPEG/PNG/WebP, 4 MiB max)
         <Input
           className="mt-1"
           type="file"

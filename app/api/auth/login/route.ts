@@ -1,4 +1,5 @@
 import { createStaffSession, loginStaff, SESSION_COOKIE } from "@/lib/server/auth";
+import { cookieSecure } from "@/lib/server/config";
 import { getClientIp, jsonError, jsonOk } from "@/lib/server/http";
 import { assertSameOrigin } from "@/lib/server/origin";
 import { limitLogin } from "@/lib/server/rate-limit";
@@ -15,7 +16,7 @@ const schema = z
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
-    limitLogin(getClientIp(request));
+    await limitLogin(getClientIp(request));
     const body = schema.parse(await request.json());
     const staff = await loginStaff(body.email, body.password);
     const token = await createStaffSession(staff);
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
     jar.set(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: cookieSecure(),
       path: "/",
       maxAge: 60 * 60 * 12,
     });

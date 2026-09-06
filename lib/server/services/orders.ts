@@ -17,7 +17,7 @@ export async function createGuestOrder(input: unknown, draftOwner: string) {
     if (existing.requestHash !== requestHash) {
       throw new AppError(409, "CONFLICT", "This request key was already used with different details.");
     }
-    return { replay: true, reference: existing.reference, status: existing.status as "new" };
+    return { replay: true, reference: existing.reference, status: "new" as const };
   }
 
   const items: CreateOrderInput["items"] = [];
@@ -86,7 +86,7 @@ export async function createGuestOrder(input: unknown, draftOwner: string) {
   } catch (error) {
     const raced = await repo.getOrderByIdempotencyKey(parsed.idempotencyKey);
     if (raced && raced.requestHash === requestHash) {
-      return { replay: true, reference: raced.reference, status: raced.status as "new" };
+      return { replay: true, reference: raced.reference, status: "new" as const };
     }
     throw error;
   }

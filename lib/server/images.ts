@@ -38,7 +38,7 @@ export function detectImageType(bytes: Buffer) {
 
 export async function processImage(bytes: Buffer) {
   if (bytes.byteLength > LIMITS.imageBytes) {
-    throw new AppError(413, "PAYLOAD_TOO_LARGE", "Images must be 5 MiB or smaller.");
+    throw new AppError(413, "PAYLOAD_TOO_LARGE", "Images must be 4 MiB or smaller.");
   }
   const detected = detectImageType(bytes);
   const pipeline = sharp(bytes, { limitInputPixels: LIMITS.imageMegapixels * 1_000_000, failOn: "error" });

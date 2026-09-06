@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import path from "node:path";
 import manifest from "../data/image-manifest.json";
 import { createIsolatedRepository } from "../lib/server/adapters/isolated-store";
@@ -36,46 +36,6 @@ const products = [
   { slug: "cushion-cover", name: "Cushion cover", category: "home-essentials", description: "Square cushion cover. Mention colour and size." },
 ];
 
-function svgFor(slug: string, label: string) {
-  const hues: Record<string, string> = {
-    "everyday-sneakers": "#f4efe6",
-    "formal-loafers": "#d8c3a5",
-    "casual-sandals": "#f0d9b5",
-    "crossbody-purse": "#e7d5c5",
-    "tote-bag": "#d9c4b0",
-    "evening-clutch": "#1f1f1f",
-    "casual-tshirt": "#dce8f2",
-    "summer-dress": "#f3c6c6",
-    "denim-trousers": "#4d6d8b",
-    "floral-fragrance": "#f4d6e3",
-    "woody-fragrance": "#c4a484",
-    "citrus-fragrance": "#f6e27a",
-    sunglasses: "#222",
-    wristwatch: "#d6d6d6",
-    belt: "#7a4e2d",
-    "insulated-bottle": "#8ecae6",
-    "travel-organiser": "#ead7c3",
-    "cushion-cover": "#d8e2dc",
-  };
-  const bg = hues[slug] ?? "#eee";
-  const fg = ["evening-clutch", "sunglasses", "denim-trousers"].includes(slug) ? "#fff" : "#222";
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-label="${label}">
-  <rect width="800" height="800" fill="${bg}"/>
-  <rect x="80" y="80" width="640" height="640" rx="48" fill="white" fill-opacity="0.28"/>
-  <text x="400" y="400" text-anchor="middle" font-family="Georgia, serif" font-size="42" fill="${fg}">${label}</text>
-</svg>`;
-}
-
-async function writeSeedImages() {
-  const dir = path.join(process.cwd(), "public", "catalogue");
-  await mkdir(dir, { recursive: true });
-  await Promise.all(
-    manifest.map((entry) =>
-      writeFile(path.join(dir, entry.filename), svgFor(entry.slug, entry.alt), "utf8")
-    )
-  );
-}
-
 async function seed(repo: Repository) {
   const now = new Date().toISOString();
   const categoryRecords = categories.map((category) => ({
@@ -89,14 +49,16 @@ async function seed(repo: Repository) {
     const existing = await repo.getProductBySlug(product.slug);
     if (existing) continue;
     const asset = manifest.find((item) => item.slug === product.slug);
+    if (!asset) throw new Error(`Missing photo manifest: ${product.slug}`);
+    const imageInfo = await stat(path.join(process.cwd(), "public", "catalogue", asset.filename));
     const uploadId = createId();
     await repo.createUpload({
       id: uploadId,
       storageKey: `seed/${asset?.filename ?? "fallback.svg"}`,
       purpose: "catalogue",
       ownerHash: "seed",
-      mime: "image/svg+xml",
-      bytes: 1024,
+      mime: "image/jpeg",
+      bytes: imageInfo.size,
       width: 800,
       height: 800,
       state: "claimed",
@@ -121,7 +83,6 @@ async function seed(repo: Repository) {
 }
 
 async function main() {
-  await writeSeedImages();
   const persistence = process.env.APP_PERSISTENCE ?? "isolated";
   if (persistence === "postgres") {
     if (!process.env.DATABASE_URL) {

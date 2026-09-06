@@ -4,6 +4,8 @@ import path from "node:path";
 import { getConfig } from "./config";
 import { createId } from "./ids";
 import type { UploadPurpose } from "./types";
+import { put, get, del } from "@vercel/blob";
+import { AppError } from "./errors";
 
 export type StoredObject = {
   key: string;
@@ -53,13 +55,42 @@ function createIsolatedStorage(): StorageAdapter {
 }
 
 function createS3Storage(): StorageAdapter {
-  const config = getConfig();
-  if (!config.storageEndpoint || !config.storageAccessKey || !config.storageSecretKey) {
-    throw new Error("S3 storage is not configured");
+  throw new Error("S3 adapter is not implemented. Use STORAGE_ADAPTER=blob on Vercel.");
+}
+
+function blobPath(bucket: "public" | "private", key: string) {
+  if (!/^(catalogue|reference)\/[a-zA-Z0-9-]+\.(webp|png|jpg)$/.test(key)) {
+    throw new AppError(400, "VALIDATION_ERROR", "Invalid media key.");
   }
-  // Production S3 wiring is selected via STORAGE_ADAPTER=s3 after credentials exist.
-  // The isolated adapter remains the default until those values are provisioned.
-  return createIsolatedStorage();
+  return `${bucket}/${key}`;
+}
+
+export function createBlobStorage(): StorageAdapter {
+  // Both prefixes live in a private store. Public catalogue reads are proxied
+  // through a route restricted to catalogue keys; reference reads require staff.
+  return {
+    async put(bucket, key, bytes, mime) {
+      await put(blobPath(bucket, key), bytes, {
+        access: "private", contentType: mime, addRandomSuffix: false,
+      });
+    },
+    async get(bucket, key) {
+      const result = await get(blobPath(bucket, key), { access: "private", useCache: false });
+      if (!result || result.statusCode !== 200) {
+        throw new AppError(404, "NOT_FOUND", "Image not found.");
+      }
+      return Buffer.from(await new Response(result.stream).arrayBuffer());
+    },
+    async remove(bucket, key) {
+      await del(blobPath(bucket, key));
+    },
+    publicUrl(key) {
+      return `/api/media/public?key=${encodeURIComponent(key)}`;
+    },
+    async signedReadUrl(key) {
+      return `/api/admin/media?key=${encodeURIComponent(key)}`;
+    },
+  };
 }
 
 let adapter: StorageAdapter | undefined;
@@ -67,7 +98,8 @@ let adapter: StorageAdapter | undefined;
 export function getStorage(): StorageAdapter {
   if (!adapter) {
     const config = getConfig();
-    adapter = config.storage === "s3" ? createS3Storage() : createIsolatedStorage();
+    adapter = config.storage === "blob" ? createBlobStorage()
+      : config.storage === "s3" ? createS3Storage() : createIsolatedStorage();
   }
   return adapter;
 }
