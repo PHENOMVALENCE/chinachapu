@@ -80,6 +80,9 @@ model Order {
   items          OrderItem[]
   events         OrderEvent[]
   notes          StaffNote[]
+  quotes         Quote[]
+  attempts       PaymentAttempt[]
+  ledger         PaymentLedger[]
 
   @@index([createdAt])
   @@index([status, createdAt])
@@ -150,4 +153,126 @@ model StaffUser {
   email        String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
+}
+
+enum QuoteState {
+  draft
+  published
+  superseded
+  revoked
+}
+
+enum PaymentAttemptStatus {
+  creating
+  pending
+  succeeded
+  failed
+  expired
+  cancelled
+  unknown
+  review
+}
+
+enum WebhookInboxStatus {
+  received
+  processed
+  failed
+}
+
+model Quote {
+  id           String            @id @default(uuid()) @db.Uuid
+  orderId      String            @db.Uuid
+  order        Order             @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  revision     Int
+  total        Int
+  currency     String            @default("TZS")
+  explanation  String
+  state        QuoteState        @default(draft)
+  expiresAt    DateTime
+  actorId      String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  accessTokens PaymentAccess[]
+  attempts     PaymentAttempt[]
+  ledger       PaymentLedger[]
+
+  @@unique([orderId, revision])
+  @@index([orderId, state])
+}
+
+model PaymentAccess {
+  id        String    @id @default(uuid()) @db.Uuid
+  quoteId   String    @db.Uuid
+  quote     Quote     @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([quoteId])
+}
+
+model PaymentAttempt {
+  id                   String                @id @default(uuid()) @db.Uuid
+  orderId              String                @db.Uuid
+  order                Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  quoteId              String                @db.Uuid
+  quote                Quote                 @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  amount               Int
+  currency             String                @default("TZS")
+  status               PaymentAttemptStatus
+  providerSessionRef   String?               @unique
+  providerPaymentRef   String?               @unique
+  providerKey          String                @unique
+  requestHash          String
+  checkoutUrl          String?
+  expiresAt            DateTime?
+  providerStatus       String?
+  reconciliationReason String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  ledger               PaymentLedger[]
+
+  @@index([orderId, status])
+  @@index([quoteId, status])
+}
+
+model WebhookInbox {
+  id          String             @id @default(uuid()) @db.Uuid
+  eventId     String             @unique
+  payloadHash String
+  eventType   String
+  payload     String
+  status      WebhookInboxStatus @default(received)
+  error       String?
+  attempts    Int                @default(0)
+  receivedAt  DateTime           @default(now())
+  processedAt DateTime?
+}
+
+model PaymentLedger {
+  id                 String         @id @default(uuid()) @db.Uuid
+  providerPaymentRef String         @unique
+  attemptId          String         @db.Uuid
+  attempt            PaymentAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  quoteId            String         @db.Uuid
+  quote              Quote          @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  orderId            String         @db.Uuid
+  order              Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  amount             Int
+  currency           String
+  completedAt        DateTime
+  createdAt          DateTime       @default(now())
+}
+
+model PaymentAudit {
+  id        String   @id @default(uuid()) @db.Uuid
+  actorId   String
+  action    String
+  orderId   String?
+  quoteId   String?
+  attemptId String?
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
 }
