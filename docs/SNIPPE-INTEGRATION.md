@@ -1,12 +1,12 @@
 # Phase 2: Snippe payment integration
 
-Status: implementation specification, not working payment code. Start after the catalogue, guest orders, staff authentication, database, and dashboard are complete. Read the [master implementation prompt](SNIPPE-MASTER-PROMPT.md).
+Status: implemented and **disabled** (`SNIPPE_ENABLED=false`). Do not treat this file as a request to charge. Verified vs unofficial facts: [SNIPPE-PROVIDER-CONTRACT.md](SNIPPE-PROVIDER-CONTRACT.md). Master prompt kept for history: [SNIPPE-MASTER-PROMPT.md](SNIPPE-MASTER-PROMPT.md).
 
 ## Scope and product decision
 
 The owner requested Snippe payments as the next phase and already has account credentials/webhook configuration. This authorizes documentation, not a live charge or payout. The correct provider spelling in the supplied guide is **Snippe**.
 
-Proposed default, pending owner confirmation: retain the public no-price catalogue and free guest request submission. Staff review an order, publish an agreed TZS quote, then copy a private payment link to share manually. The customer sees the exact quote and explicitly chooses to pay. Do not silently charge the original contact phone. Showing the agreed amount on this private payment page is a Phase 2 exception to the Phase 1 prohibition on monetary UI; public product prices stay absent. If the owner chooses upfront checkout instead, revise this design before implementing amount collection.
+Implemented default, confirmed in Phase 2: retain the public no-price catalogue and free guest request submission. Staff review an order, publish an agreed TZS quote, then copy a private payment link to share manually. The customer sees the exact quote and explicitly chooses to pay. Do not silently charge the original contact phone. Showing the agreed amount on this private payment page is a Phase 2 exception to the Phase 1 prohibition on monetary UI; public product prices stay absent. If the owner chooses upfront checkout instead, revise this design before implementing amount collection.
 
 Implement full payment of one fixed quote per order. Exclude deposits, installments, custom amounts, tips, automatic messaging, subscriptions, payouts, refunds, saved payment credentials, and revenue analytics. Do not implement payouts as a refund workaround. Payment success does not mean sourcing/delivery is completed.
 
@@ -53,7 +53,7 @@ Use a small typed server-only HTTP adapter by default. If choosing the SDK, veri
 
 ## Persistence and Next.js boundaries
 
-Extend the finished app's existing Prisma/PostgreSQL schema and staff authorization rather than replacing them. Inspect the completed implementation first: the local in-progress schema currently has Order, OrderItem, StaffUser, events, and notes but no quotes/payments.
+Quotes, hashed access tokens, attempts, webhook inbox, completion ledger, and audit records are in Prisma (and the isolated store). Financial FKs use Restrict. One unresolved attempt per order is enforced in the database.
 
 | Record | Minimum fields/invariants |
 | --- | --- |
@@ -66,7 +66,7 @@ Extend the finished app's existing Prisma/PostgreSQL schema and staff authorizat
 
 Use local statuses creating/pending/succeeded/failed/expired/cancelled/unknown/review. Keep raw provider state separately. Enforce at most one unresolved attempt per quote/order with a database constraint or transactional lock, not a disabled button. Never downgrade succeeded on an older failed event. Do not let existing order-deletion cascades erase financial history; update retention/deletion design in this phase.
 
-Suggested routes:
+Implemented routes:
 
 - POST `/api/admin/orders/[id]/quotes`: staff creates/publishes a validated revision using order version.
 - POST `/api/admin/quotes/[id]/access`: staff creates/rotates private access.
@@ -99,7 +99,7 @@ The supplied guide describes five delivery attempts with delays up to 24 minutes
 
 ## Configuration and rollout
 
-Planned server-only variables: `SNIPPE_API_KEY`, `SNIPPE_WEBHOOK_SECRET`, `SNIPPE_API_BASE_URL` (fixed official host), `SNIPPE_WEBHOOK_URL`, existing canonical `APP_URL`, and `SNIPPE_ENABLED=false`. Add placeholders to `.env.example`, never real values. API key and webhook secret are different values. Validate HTTPS callback origins from trusted configuration and provider checkout URL hosts against documented allowed hosts. Do not fetch arbitrary URLs supplied by customers.
+Server-only variables (placeholders in `.env.example`): `SNIPPE_API_KEY`, `SNIPPE_WEBHOOK_SECRET`, `SNIPPE_API_BASE_URL` (official host), `SNIPPE_WEBHOOK_URL`, `APP_URL`, and `SNIPPE_ENABLED=false`. API key and webhook secret are different values. Validate HTTPS callback origins from trusted configuration and provider checkout URL hosts against documented allowed hosts. Do not fetch arbitrary URLs supplied by customers.
 
 Use collection-only scopes verified for sessions; do not grant payout scopes. Owner configures keys in local ignored env/host secret settings. Never ask them to paste keys into the prompt or commit/log them. Existing webhook setup must be checked against the final publicly reachable `/api/webhooks/snippe` URL. Do not overwrite another integration's webhook configuration without understanding its usage.
 
