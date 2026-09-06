@@ -11,6 +11,8 @@ npm run dev
 
 Use Node.js 22 LTS as the proposed baseline. Run Next.js on port 3000; XAMPP is not needed. For production, `npm run build` then `npm start` requires a Node-capable host. Do not use static export or GitHub Pages for the planned backend.
 
+Implementation added `lint` (ESLint CLI), `typecheck`, `test`, Prisma migrate/seed, staff provisioning, and upload cleanup scripts. CI lives in `.github/workflows/ci.yml` and does not deploy. Adapter choices are recorded in [SETUP.md](SETUP.md). Isolated persistence is not production-ready.
+
 ## First implementation fixes
 
 - `npm run lint` currently invokes `next lint`; replace with ESLint CLI and align `eslint-config-next` (currently 15.2.1) with the selected Next.js version. Next.js 16 removes `next lint` and does not lint as part of build: [upgrade guide](https://nextjs.org/docs/app/guides/upgrading/version-16).
