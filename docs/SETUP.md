@@ -23,6 +23,16 @@ Staff sessions use signed HttpOnly JWT cookies (`jose`). There is no customer id
 
 Guest uploads are authorised into quarantine, validated, re-encoded, then claimed only inside the order transaction.
 
+## Snippe payments (Phase 2)
+
+Quote-first collection is implemented and **disabled** (`SNIPPE_ENABLED=false`). Public catalogue stays price-free. Staff publish a TZS quote, copy a private link, and the customer explicitly pays on hosted Snippe checkout.
+
+Verified contract notes and open gaps: [SNIPPE-PROVIDER-CONTRACT.md](SNIPPE-PROVIDER-CONTRACT.md).
+
+Webhook URL to register: `{APP_URL}/api/webhooks/snippe`.
+
+Set `SNIPPE_API_KEY` and `SNIPPE_WEBHOOK_SECRET` in the ignored server environment only. Initiation stays off until `SNIPPE_ENABLED=true`. Webhook intake and `npm run payments:sweep` still process late events when the webhook secret is present.
+
 ## Rate limits
 
 In-process counters (10 orders and 20 guest upload authorisations per IP per hour; login throttled). Replace with shared store (for example Redis) before multi-instance production. Configure `RATE_LIMIT_STORE=memory` today.

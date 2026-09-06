@@ -4,11 +4,17 @@ import type {
   OrderItemRecord,
   OrderRecord,
   OrderStatus,
+  PaymentAccessRecord,
+  PaymentAttemptRecord,
+  PaymentAuditRecord,
+  PaymentLedgerRecord,
   ProductRecord,
   ProductState,
+  QuoteRecord,
   StaffNoteRecord,
   StaffUserRecord,
   UploadRecord,
+  WebhookInboxRecord,
 } from "./types";
 
 export type CreateOrderInput = {
@@ -71,6 +77,29 @@ export interface Repository {
 
   getStaffByEmail(email: string): Promise<StaffUserRecord | null>;
   upsertStaff(staff: StaffUserRecord): Promise<StaffUserRecord>;
+
+  createQuote(quote: QuoteRecord): Promise<QuoteRecord>;
+  getQuote(id: string): Promise<QuoteRecord | null>;
+  listQuotesForOrder(orderId: string): Promise<QuoteRecord[]>;
+  updateQuote(id: string, patch: Partial<QuoteRecord>): Promise<QuoteRecord>;
+  createPaymentAccess(access: PaymentAccessRecord): Promise<PaymentAccessRecord>;
+  getPaymentAccessByHash(tokenHash: string): Promise<PaymentAccessRecord | null>;
+  listPaymentAccess(quoteId: string): Promise<PaymentAccessRecord[]>;
+  revokePaymentAccess(id: string): Promise<void>;
+  createAttempt(attempt: PaymentAttemptRecord): Promise<PaymentAttemptRecord>;
+  getAttempt(id: string): Promise<PaymentAttemptRecord | null>;
+  getUnresolvedAttempt(orderId: string): Promise<PaymentAttemptRecord | null>;
+  getAttemptBySessionRef(reference: string): Promise<PaymentAttemptRecord | null>;
+  getAttemptByPaymentRef(reference: string): Promise<PaymentAttemptRecord | null>;
+  listAttemptsForOrder(orderId: string): Promise<PaymentAttemptRecord[]>;
+  listSweepAttempts(): Promise<PaymentAttemptRecord[]>;
+  updateAttempt(id: string, patch: Partial<PaymentAttemptRecord>): Promise<PaymentAttemptRecord>;
+  insertInbox(record: WebhookInboxRecord): Promise<{ record: WebhookInboxRecord; created: boolean }>;
+  listPendingInbox(): Promise<WebhookInboxRecord[]>;
+  updateInbox(id: string, patch: Partial<WebhookInboxRecord>): Promise<WebhookInboxRecord>;
+  insertLedger(record: PaymentLedgerRecord): Promise<PaymentLedgerRecord>;
+  listLedgerForOrder(orderId: string): Promise<PaymentLedgerRecord[]>;
+  addPaymentAudit(record: PaymentAuditRecord): Promise<PaymentAuditRecord>;
 
   resetForTests(): Promise<void>;
 }

@@ -8,10 +8,16 @@ import type {
 } from "../repository";
 import type {
   OrderRecord,
+  PaymentAccessRecord,
+  PaymentAttemptRecord,
+  PaymentLedgerRecord,
   ProductRecord,
+  QuoteRecord,
   StaffUserRecord,
   UploadRecord,
+  WebhookInboxRecord,
 } from "../types";
+import { UNRESOLVED_ATTEMPT_STATUSES } from "../types";
 
 let client: PrismaClient | undefined;
 
@@ -386,8 +392,266 @@ export function createPrismaRepository(): Repository {
       });
       return { ...row, createdAt: row.createdAt.toISOString() };
     },
+    async createQuote(quote) {
+      const row = await db.quote.create({
+        data: { ...quote, expiresAt: new Date(quote.expiresAt), createdAt: new Date(quote.createdAt), updatedAt: new Date(quote.updatedAt) },
+      });
+      return mapQuote(row);
+    },
+    async getQuote(id) {
+      const row = await db.quote.findUnique({ where: { id } });
+      return row ? mapQuote(row) : null;
+    },
+    async listQuotesForOrder(orderId) {
+      const rows = await db.quote.findMany({ where: { orderId }, orderBy: { revision: "desc" } });
+      return rows.map(mapQuote);
+    },
+    async updateQuote(id, patch) {
+      const row = await db.quote.update({
+        where: { id },
+        data: {
+          ...patch,
+          expiresAt: patch.expiresAt ? new Date(patch.expiresAt) : undefined,
+        },
+      });
+      return mapQuote(row);
+    },
+    async createPaymentAccess(access) {
+      const row = await db.paymentAccess.create({
+        data: {
+          ...access,
+          expiresAt: new Date(access.expiresAt),
+          revokedAt: access.revokedAt ? new Date(access.revokedAt) : null,
+          createdAt: new Date(access.createdAt),
+        },
+      });
+      return mapAccess(row);
+    },
+    async getPaymentAccessByHash(tokenHash) {
+      const row = await db.paymentAccess.findUnique({ where: { tokenHash } });
+      return row ? mapAccess(row) : null;
+    },
+    async listPaymentAccess(quoteId) {
+      const rows = await db.paymentAccess.findMany({ where: { quoteId } });
+      return rows.map(mapAccess);
+    },
+    async revokePaymentAccess(id) {
+      await db.paymentAccess.update({ where: { id }, data: { revokedAt: new Date() } });
+    },
+    async createAttempt(attempt) {
+      try {
+        const row = await db.paymentAttempt.create({
+          data: {
+            ...attempt,
+            expiresAt: attempt.expiresAt ? new Date(attempt.expiresAt) : null,
+            createdAt: new Date(attempt.createdAt),
+            updatedAt: new Date(attempt.updatedAt),
+          },
+        });
+        return mapAttempt(row);
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          throw new AppError(409, "CONFLICT", "This order already has an unresolved payment attempt.");
+        }
+        throw error;
+      }
+    },
+    async getAttempt(id) {
+      const row = await db.paymentAttempt.findUnique({ where: { id } });
+      return row ? mapAttempt(row) : null;
+    },
+    async getUnresolvedAttempt(orderId) {
+      const row = await db.paymentAttempt.findFirst({
+        where: { orderId, status: { in: [...UNRESOLVED_ATTEMPT_STATUSES] } },
+      });
+      return row ? mapAttempt(row) : null;
+    },
+    async getAttemptBySessionRef(reference) {
+      const row = await db.paymentAttempt.findUnique({ where: { providerSessionRef: reference } });
+      return row ? mapAttempt(row) : null;
+    },
+    async getAttemptByPaymentRef(reference) {
+      const row = await db.paymentAttempt.findUnique({ where: { providerPaymentRef: reference } });
+      return row ? mapAttempt(row) : null;
+    },
+    async listAttemptsForOrder(orderId) {
+      const rows = await db.paymentAttempt.findMany({ where: { orderId }, orderBy: { createdAt: "asc" } });
+      return rows.map(mapAttempt);
+    },
+    async listSweepAttempts() {
+      const rows = await db.paymentAttempt.findMany({
+        where: { status: { in: [...UNRESOLVED_ATTEMPT_STATUSES] } },
+      });
+      return rows.map(mapAttempt);
+    },
+    async updateAttempt(id, patch) {
+      const row = await db.paymentAttempt.update({
+        where: { id },
+        data: {
+          ...patch,
+          expiresAt: patch.expiresAt === undefined ? undefined : patch.expiresAt ? new Date(patch.expiresAt) : null,
+        },
+      });
+      return mapAttempt(row);
+    },
+    async insertInbox(record) {
+      const existing = await db.webhookInbox.findUnique({ where: { eventId: record.eventId } });
+      if (existing) {
+        if (existing.payloadHash !== record.payloadHash) {
+          throw new AppError(409, "CONFLICT", "Duplicate webhook id with a different payload.");
+        }
+        return { record: mapInbox(existing), created: false };
+      }
+      const row = await db.webhookInbox.create({
+        data: {
+          ...record,
+          receivedAt: new Date(record.receivedAt),
+          processedAt: record.processedAt ? new Date(record.processedAt) : null,
+        },
+      });
+      return { record: mapInbox(row), created: true };
+    },
+    async listPendingInbox() {
+      const rows = await db.webhookInbox.findMany({ where: { status: { not: "processed" } } });
+      return rows.map(mapInbox);
+    },
+    async updateInbox(id, patch) {
+      const row = await db.webhookInbox.update({
+        where: { id },
+        data: {
+          ...patch,
+          processedAt: patch.processedAt === undefined ? undefined : patch.processedAt ? new Date(patch.processedAt) : null,
+        },
+      });
+      return mapInbox(row);
+    },
+    async insertLedger(record) {
+      const existing = await db.paymentLedger.findUnique({ where: { providerPaymentRef: record.providerPaymentRef } });
+      if (existing) return mapLedger(existing);
+      const row = await db.paymentLedger.create({
+        data: {
+          ...record,
+          completedAt: new Date(record.completedAt),
+          createdAt: new Date(record.createdAt),
+        },
+      });
+      return mapLedger(row);
+    },
+    async listLedgerForOrder(orderId) {
+      const rows = await db.paymentLedger.findMany({ where: { orderId } });
+      return rows.map(mapLedger);
+    },
+    async addPaymentAudit(record) {
+      const row = await db.paymentAudit.create({
+        data: { ...record, createdAt: new Date(record.createdAt) },
+      });
+      return { ...row, createdAt: row.createdAt.toISOString() };
+    },
     async resetForTests() {
       throw new AppError(500, "INTERNAL_ERROR", "Postgres reset is not available in application code.");
     },
+  };
+}
+
+function mapQuote(row: {
+  id: string;
+  orderId: string;
+  revision: number;
+  total: number;
+  currency: string;
+  explanation: string;
+  state: QuoteRecord["state"];
+  expiresAt: Date;
+  actorId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}): QuoteRecord {
+  return {
+    ...row,
+    currency: "TZS",
+    expiresAt: row.expiresAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function mapAccess(row: {
+  id: string;
+  quoteId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  createdAt: Date;
+}): PaymentAccessRecord {
+  return {
+    ...row,
+    expiresAt: row.expiresAt.toISOString(),
+    revokedAt: row.revokedAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function mapAttempt(row: {
+  id: string;
+  orderId: string;
+  quoteId: string;
+  amount: number;
+  currency: string;
+  status: PaymentAttemptRecord["status"];
+  providerSessionRef: string | null;
+  providerPaymentRef: string | null;
+  providerKey: string;
+  requestHash: string;
+  checkoutUrl: string | null;
+  expiresAt: Date | null;
+  providerStatus: string | null;
+  reconciliationReason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): PaymentAttemptRecord {
+  return {
+    ...row,
+    currency: "TZS",
+    expiresAt: row.expiresAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function mapInbox(row: {
+  id: string;
+  eventId: string;
+  payloadHash: string;
+  eventType: string;
+  payload: string;
+  status: WebhookInboxRecord["status"];
+  error: string | null;
+  attempts: number;
+  receivedAt: Date;
+  processedAt: Date | null;
+}): WebhookInboxRecord {
+  return {
+    ...row,
+    receivedAt: row.receivedAt.toISOString(),
+    processedAt: row.processedAt?.toISOString() ?? null,
+  };
+}
+
+function mapLedger(row: {
+  id: string;
+  providerPaymentRef: string;
+  attemptId: string;
+  quoteId: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  completedAt: Date;
+  createdAt: Date;
+}): PaymentLedgerRecord {
+  return {
+    ...row,
+    currency: "TZS",
+    completedAt: row.completedAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
   };
 }

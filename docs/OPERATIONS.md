@@ -53,6 +53,14 @@ npm run db:cleanup
 
 Log request IDs, status codes, and timing. Do not log names, emails, phone numbers, notes, or signed URLs.
 
+## Snippe payments
+
+- Feature flag: `SNIPPE_ENABLED`. Leave false until provider-contract gaps in [SNIPPE-PROVIDER-CONTRACT.md](SNIPPE-PROVIDER-CONTRACT.md) are closed and a real-money test is separately authorised.
+- Register webhook `https://<production-host>/api/webhooks/snippe`. Do not paste secrets into tickets or git.
+- Schedule `npm run payments:sweep` so inbox and unknown attempts continue when initiation is disabled.
+- Rollback: set `SNIPPE_ENABLED=false`. Do not drop ledger or inbox tables. Keep sweeping late webhooks.
+- Order deletion must not cascade into quotes, attempts, or ledger rows (Restrict).
+
 ## Remaining launch work
 
 - Provision hosted PostgreSQL, object storage, and TLS.

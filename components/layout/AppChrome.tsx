@@ -6,9 +6,9 @@ import { usePathname } from "next/navigation";
 
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = pathname.startsWith("/admin");
+  const isBare = pathname.startsWith("/admin") || pathname.startsWith("/pay");
 
-  if (isAdmin) {
+  if (isBare) {
     return <main className="flex-grow">{children}</main>;
   }
 

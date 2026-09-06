@@ -18,7 +18,8 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:cleanup": "tsx scripts/cleanup-uploads.ts",
-    "staff:provision": "tsx scripts/provision-staff.ts"
+    "staff:provision": "tsx scripts/provision-staff.ts",
+    "payments:sweep": "tsx scripts/sweep-payments.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

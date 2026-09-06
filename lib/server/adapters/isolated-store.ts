@@ -14,11 +14,18 @@ import type {
   OrderItemRecord,
   OrderRecord,
   OrderStatus,
+  PaymentAccessRecord,
+  PaymentAttemptRecord,
+  PaymentAuditRecord,
+  PaymentLedgerRecord,
   ProductRecord,
+  QuoteRecord,
   StaffNoteRecord,
   StaffUserRecord,
   UploadRecord,
+  WebhookInboxRecord,
 } from "../types";
+import { UNRESOLVED_ATTEMPT_STATUSES } from "../types";
 
 type StoreShape = {
   categories: CategoryRecord[];
@@ -29,6 +36,12 @@ type StoreShape = {
   events: OrderEventRecord[];
   notes: StaffNoteRecord[];
   staff: StaffUserRecord[];
+  quotes: QuoteRecord[];
+  access: PaymentAccessRecord[];
+  attempts: PaymentAttemptRecord[];
+  inbox: WebhookInboxRecord[];
+  ledger: PaymentLedgerRecord[];
+  audits: PaymentAuditRecord[];
 };
 
 const emptyStore = (): StoreShape => ({
@@ -40,6 +53,12 @@ const emptyStore = (): StoreShape => ({
   events: [],
   notes: [],
   staff: [],
+  quotes: [],
+  access: [],
+  attempts: [],
+  inbox: [],
+  ledger: [],
+  audits: [],
 });
 
 const memory = new Map<string, StoreShape>();
@@ -54,7 +73,7 @@ async function load(key: string): Promise<StoreShape> {
   }
   try {
     const raw = await readFile(filePath(), "utf8");
-    const parsed = JSON.parse(raw) as StoreShape;
+    const parsed = { ...emptyStore(), ...(JSON.parse(raw) as Partial<StoreShape>) };
     memory.set(key, parsed);
     return parsed;
   } catch {
@@ -338,6 +357,147 @@ export function createIsolatedRepository(namespace = "default"): Repository {
       else store.staff.push(staff);
       await persist(key, store);
       return staff;
+    },
+    async createQuote(quote) {
+      const store = await load(key);
+      if (store.quotes.some((item) => item.orderId === quote.orderId && item.revision === quote.revision)) {
+        throw new AppError(409, "CONFLICT", "That quote revision already exists.");
+      }
+      store.quotes.push(quote);
+      await persist(key, store);
+      return quote;
+    },
+    async getQuote(id) {
+      const store = await load(key);
+      return store.quotes.find((item) => item.id === id) ?? null;
+    },
+    async listQuotesForOrder(orderId) {
+      const store = await load(key);
+      return store.quotes
+        .filter((item) => item.orderId === orderId)
+        .sort((a, b) => b.revision - a.revision);
+    },
+    async updateQuote(id, patch) {
+      const store = await load(key);
+      const index = store.quotes.findIndex((item) => item.id === id);
+      if (index < 0) throw new AppError(404, "NOT_FOUND", "Quote not found.");
+      store.quotes[index] = { ...store.quotes[index], ...patch, id, updatedAt: new Date().toISOString() };
+      await persist(key, store);
+      return store.quotes[index];
+    },
+    async createPaymentAccess(access) {
+      const store = await load(key);
+      store.access.push(access);
+      await persist(key, store);
+      return access;
+    },
+    async getPaymentAccessByHash(tokenHash) {
+      const store = await load(key);
+      return store.access.find((item) => item.tokenHash === tokenHash) ?? null;
+    },
+    async listPaymentAccess(quoteId) {
+      const store = await load(key);
+      return store.access.filter((item) => item.quoteId === quoteId);
+    },
+    async revokePaymentAccess(id) {
+      const store = await load(key);
+      const item = store.access.find((entry) => entry.id === id);
+      if (item) item.revokedAt = new Date().toISOString();
+      await persist(key, store);
+    },
+    async createAttempt(attempt) {
+      const store = await load(key);
+      const unresolved = store.attempts.find(
+        (item) => item.orderId === attempt.orderId && UNRESOLVED_ATTEMPT_STATUSES.includes(item.status)
+      );
+      if (unresolved) {
+        throw new AppError(409, "CONFLICT", "This order already has an unresolved payment attempt.");
+      }
+      store.attempts.push(attempt);
+      await persist(key, store);
+      return attempt;
+    },
+    async getAttempt(id) {
+      const store = await load(key);
+      return store.attempts.find((item) => item.id === id) ?? null;
+    },
+    async getUnresolvedAttempt(orderId) {
+      const store = await load(key);
+      return (
+        store.attempts.find(
+          (item) => item.orderId === orderId && UNRESOLVED_ATTEMPT_STATUSES.includes(item.status)
+        ) ?? null
+      );
+    },
+    async getAttemptBySessionRef(reference) {
+      const store = await load(key);
+      return store.attempts.find((item) => item.providerSessionRef === reference) ?? null;
+    },
+    async getAttemptByPaymentRef(reference) {
+      const store = await load(key);
+      return store.attempts.find((item) => item.providerPaymentRef === reference) ?? null;
+    },
+    async listAttemptsForOrder(orderId) {
+      const store = await load(key);
+      return store.attempts
+        .filter((item) => item.orderId === orderId)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    },
+    async listSweepAttempts() {
+      const store = await load(key);
+      return store.attempts.filter((item) => UNRESOLVED_ATTEMPT_STATUSES.includes(item.status));
+    },
+    async updateAttempt(id, patch) {
+      const store = await load(key);
+      const index = store.attempts.findIndex((item) => item.id === id);
+      if (index < 0) throw new AppError(404, "NOT_FOUND", "Payment attempt not found.");
+      store.attempts[index] = { ...store.attempts[index], ...patch, id, updatedAt: new Date().toISOString() };
+      await persist(key, store);
+      return store.attempts[index];
+    },
+    async insertInbox(record) {
+      const store = await load(key);
+      const existing = store.inbox.find((item) => item.eventId === record.eventId);
+      if (existing) {
+        if (existing.payloadHash !== record.payloadHash) {
+          throw new AppError(409, "CONFLICT", "Duplicate webhook id with a different payload.");
+        }
+        return { record: existing, created: false };
+      }
+      store.inbox.push(record);
+      await persist(key, store);
+      return { record, created: true };
+    },
+    async listPendingInbox() {
+      const store = await load(key);
+      return store.inbox.filter((item) => item.status !== "processed");
+    },
+    async updateInbox(id, patch) {
+      const store = await load(key);
+      const index = store.inbox.findIndex((item) => item.id === id);
+      if (index < 0) throw new AppError(404, "NOT_FOUND", "Inbox record not found.");
+      store.inbox[index] = { ...store.inbox[index], ...patch, id };
+      await persist(key, store);
+      return store.inbox[index];
+    },
+    async insertLedger(record) {
+      const store = await load(key);
+      if (store.ledger.some((item) => item.providerPaymentRef === record.providerPaymentRef)) {
+        return store.ledger.find((item) => item.providerPaymentRef === record.providerPaymentRef)!;
+      }
+      store.ledger.push(record);
+      await persist(key, store);
+      return record;
+    },
+    async listLedgerForOrder(orderId) {
+      const store = await load(key);
+      return store.ledger.filter((item) => item.orderId === orderId);
+    },
+    async addPaymentAudit(record) {
+      const store = await load(key);
+      store.audits.push(record);
+      await persist(key, store);
+      return record;
     },
     async resetForTests() {
       memory.set(key, emptyStore());

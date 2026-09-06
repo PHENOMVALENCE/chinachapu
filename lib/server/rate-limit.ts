@@ -30,6 +30,14 @@ export function limitLogin(ip: string) {
   hit(`login:${ip}`, LIMITS.loginAttemptsMax, LIMITS.loginAttemptsWindowMs);
 }
 
+export function limitPayAccess(ip: string) {
+  hit(`pay-access:${ip}`, 20, 60 * 60 * 1000);
+}
+
+export function limitPaySession(ip: string) {
+  hit(`pay-session:${ip}`, 10, 60 * 60 * 1000);
+}
+
 export function resetRateLimits() {
   buckets.clear();
 }
