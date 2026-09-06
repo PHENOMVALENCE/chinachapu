@@ -1,41 +1,33 @@
-# BloomShop - Free Next.js Tailwind CSS E-Commerce Template
+# ChinaChapu
 
-#### Preview
+A planned single-page catalogue and guest product-request service, with a protected staff dashboard. No prices, payments, or customer accounts.
 
- - [Demo](https://themewagon.github.io/bloomtpl/)
+## Status
 
-#### Download
- - [Download from ThemeWagon](https://themewagon.com/themes/bloomtpl/)
+Documentation and template baseline only. The imported BloomShop template still contains prices and separate product/cart pages. Orders, uploads, persistence, and admin authentication are not implemented. Cursor will implement the specification.
 
-## Getting Started
+## Documentation
 
-1. Clone Repository
-```
-git clone https://github.com/themewagon/bloomtpl.git
-```
-2. Install Dependencies
-```
-npm i
-```
-3. Run the development server:
+- [Product requirements](docs/PRODUCT.md)
+- [Catalogue and image brief](docs/CATALOGUE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Data model and API](docs/DATA-AND-API.md)
+- [Development and operations](docs/DEVELOPMENT.md)
+- [Acceptance plan](docs/ACCEPTANCE.md)
+- [Cursor handoff](docs/CURSOR-HANDOFF.md)
+- [Contributing](CONTRIBUTING.md)
 
-```bash
+## Existing template setup
+
+Planned runtime baseline: Node.js 22 LTS and npm. Verify compatibility when aligning dependencies.
+
+```sh
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-## Author 
-```
-Design and code is completely written by Bloomtpl and development team. 
-```
+Open http://localhost:3000. XAMPP/Apache does not run this Node.js application. See the development guide for tooling issues. Installation/build were not tested in this documentation phase.
 
-## License
+## Attribution
 
- - Design and Code is Copyright &copy; <a href="https://github.com/bloomtpl" target="_blank">Bloomtpl</a>
- - Licensed cover under [MIT]
- - Distributed by <a href="https://themewagon.com" target="_blank">ThemeWagon</a>
+The original BloomShop README identifies Bloomtpl as author, ThemeWagon as distributor, and states MIT licensing. Preserve [the original README](docs/TEMPLATE-README.md). No standalone upstream license was included; verify the upstream license and image rights before release. This documentation grants no additional rights.
