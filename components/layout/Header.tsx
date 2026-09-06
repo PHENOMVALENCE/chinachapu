@@ -7,9 +7,8 @@ import { useCallback, useState } from "react";
 
 const navItems = [
   { href: "/#catalogue", label: "Catalogue" },
-  { href: "/#custom", label: "Request something else" },
-  { href: "/#request", label: "Your request" },
-  { href: "/#contact", label: "Contact" },
+  { href: "/#request", label: "Send request" },
+  { href: "/#custom", label: "Something else" },
 ];
 
 export default function Header() {
