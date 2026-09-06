@@ -6,7 +6,7 @@ export const LIMITS = {
   customName: { min: 2, max: 150 },
   description: { max: 2000 },
   requestLines: { min: 1, max: 20 },
-  imageBytes: 5 * 1024 * 1024,
+  imageBytes: 4 * 1024 * 1024,
   imageMegapixels: 20,
   pageSize: { default: 24, max: 100 },
   uploadAuthTtlMs: 10 * 60 * 1000,
