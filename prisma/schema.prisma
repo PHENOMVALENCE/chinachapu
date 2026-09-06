@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductState {
+  draft
+  active
+  archived
+}
+
+enum OrderStatus {
+  new
+  contacted
+  sourcing
+  completed
+  cancelled
+}
+
+enum OrderItemKind {
+  catalogue
+  custom
+}
+
+enum UploadPurpose {
+  reference
+  catalogue
+}
+
+enum UploadState {
+  pending
+  ready
+  claimed
+}
+
+model Category {
+  id        String    @id @default(uuid()) @db.Uuid
+  slug      String    @unique
+  name      String
+  sortOrder Int
+  products  Product[]
+}
+
+model Product {
+  id           String       @id @default(uuid()) @db.Uuid
+  slug         String       @unique
+  name         String
+  categoryId   String       @db.Uuid
+  category     Category     @relation(fields: [categoryId], references: [id])
+  description  String?
+  imageAssetId String?      @db.Uuid
+  imageAsset   Upload?      @relation(fields: [imageAssetId], references: [id])
+  altText      String?
+  state        ProductState @default(draft)
+  version      Int          @default(1)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  orderItems   OrderItem[]
+
+  @@index([categoryId])
+  @@index([state])
+}
+
+model Order {
+  id             String        @id @default(uuid()) @db.Uuid
+  reference      String        @unique
+  name           String
+  email          String
+  phone          String
+  status         OrderStatus   @default(new)
+  idempotencyKey String        @unique
+  requestHash    String
+  version        Int           @default(1)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  items          OrderItem[]
+  events         OrderEvent[]
+  notes          StaffNote[]
+
+  @@index([createdAt])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id               String        @id @default(uuid()) @db.Uuid
+  orderId          String        @db.Uuid
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kind             OrderItemKind
+  productId        String?       @db.Uuid
+  product          Product?      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  nameSnapshot     String
+  categorySnapshot String?
+  quantity         Int
+  description      String?
+  upload           Upload?
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Upload {
+  id          String         @id @default(uuid()) @db.Uuid
+  storageKey  String         @unique
+  purpose     UploadPurpose
+  ownerHash   String
+  mime        String
+  bytes       Int
+  width       Int?
+  height      Int?
+  state       UploadState    @default(pending)
+  expiresAt   DateTime?
+  orderItemId String?        @unique @db.Uuid
+  orderItem   OrderItem?     @relation(fields: [orderItemId], references: [id])
+  products    Product[]
+  createdAt   DateTime       @default(now())
+
+  @@index([ownerHash])
+  @@index([state, expiresAt])
+}
+
+model OrderEvent {
+  id        String       @id @default(uuid()) @db.Uuid
+  orderId   String       @db.Uuid
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  oldStatus OrderStatus?
+  newStatus OrderStatus
+  staffId   String
+  createdAt DateTime     @default(now())
+
+  @@index([orderId])
+}
+
+model StaffNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  staffId   String
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model StaffUser {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
