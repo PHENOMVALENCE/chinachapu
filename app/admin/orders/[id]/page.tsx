@@ -1,5 +1,7 @@
 import OrderActions from "@/components/admin/OrderActions";
+import QuotePanel from "@/components/admin/QuotePanel";
 import { guardAdminPage } from "@/lib/server/admin-guard";
+import { getRepository } from "@/lib/server/db";
 import { getAdminOrder } from "@/lib/server/services/admin";
 
 export default async function AdminOrderDetailPage({
@@ -10,6 +12,11 @@ export default async function AdminOrderDetailPage({
   await guardAdminPage();
   const { id } = await params;
   const order = await getAdminOrder(id);
+  const repo = getRepository();
+  const [quotes, attempts] = await Promise.all([
+    repo.listQuotesForOrder(id),
+    repo.listAttemptsForOrder(id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -42,6 +49,7 @@ export default async function AdminOrderDetailPage({
           ))}
         </ul>
       </section>
+      <QuotePanel orderId={order.id} version={order.version} quotes={quotes} attempts={attempts} />
       <OrderActions orderId={order.id} version={order.version} status={order.status} />
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">Status history</h2>
