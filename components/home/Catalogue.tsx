@@ -1,12 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRequest } from "@/context/RequestContext";
 import type { PublicCategory, PublicProduct } from "@/lib/server/types";
-import { useMemo, useState } from "react";
+import { LIMITS } from "@/lib/validation/limits";
+import { useEffect, useMemo, useRef, useState } from "react";
+import ProductPhoto from "./ProductPhoto";
 
 type Props = {
   categories: PublicCategory[];
@@ -23,7 +24,7 @@ export default function Catalogue({
   selectedProductId,
   unavailable,
 }: Props) {
-  const { addLine } = useRequest();
+  const { addLine, unitCount } = useRequest();
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState("all");
   const [pickedId, setPickedId] = useState<string | undefined>(selectedProductId);
@@ -34,6 +35,8 @@ export default function Catalogue({
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const quantityRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<HTMLFormElement>(null);
 
   const visible = useMemo(() => {
     return products.filter((product) => {
@@ -46,6 +49,12 @@ export default function Catalogue({
       return categoryOk && queryOk;
     });
   }, [products, category, query]);
+
+  useEffect(() => {
+    if (!pickedId) return;
+    editorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    quantityRef.current?.focus();
+  }, [pickedId]);
 
   async function handleAdd(event: React.FormEvent) {
     event.preventDefault();
@@ -101,7 +110,7 @@ export default function Catalogue({
       imagePreview,
       uploadId,
     });
-    setNotice(`${selected.name} added to your request.`);
+    setNotice(`${selected.name} added to your request. ${unitCount + qty} units in your request.`);
     setNotes("");
     setPhoto(null);
     setQuantity("1");
@@ -113,6 +122,9 @@ export default function Catalogue({
         <h2 className="text-2xl font-semibold">Catalogue</h2>
         <p className="text-muted-foreground">
           Filter by category or search. Adding an item keeps you on this page.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Photos show example styles. Tell us your preferred details.
         </p>
         {unavailable ? (
           <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm" role="status">
@@ -160,101 +172,117 @@ export default function Catalogue({
           No products match that search. Try another term or category.
         </p>
       ) : (
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((product) => (
-            <Card key={product.id} className="overflow-hidden">
-              <div className="aspect-square bg-muted">
-                {product.image ? (
-                  // Seed assets are local SVGs; reserve square space.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={product.image.url}
-                    alt={product.image.alt}
-                    width={800}
-                    height={800}
-                    className="h-full w-full object-cover"
+        <ul className="space-y-4">
+          {visible.map((product, index) => (
+            <li key={product.id}>
+              <article className="rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5">
+                <div className="flex flex-wrap items-start gap-4 sm:gap-5">
+                  <ProductPhoto
+                    url={product.image?.url}
+                    alt={product.image?.alt ?? product.name}
+                    priority={index < 2}
                   />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    Image unavailable
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {product.category.name}
+                    </p>
+                    <h3 className="text-lg font-semibold">{product.name}</h3>
+                    {product.description ? (
+                      <p className="text-sm text-muted-foreground">{product.description}</p>
+                    ) : null}
                   </div>
-                )}
-              </div>
-              <CardContent className="space-y-3 p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  {product.category.name}
-                </p>
-                <h3 className="text-lg font-semibold">{product.name}</h3>
-                {product.description ? (
-                  <p className="text-sm text-muted-foreground">{product.description}</p>
+                  <div className="w-full sm:w-auto sm:self-center">
+                    <Button
+                      type="button"
+                      className="min-h-11 w-full px-5 sm:w-auto"
+                      onClick={() => {
+                        setPickedId(product.id);
+                        setNotice(null);
+                      }}
+                      aria-label={`Place order for ${product.name}`}
+                    >
+                      Place order
+                    </Button>
+                  </div>
+                </div>
+                {selected?.id === product.id ? (
+                  <form
+                    ref={editorRef}
+                    onSubmit={handleAdd}
+                    className="mt-4 space-y-4 border-t border-border pt-4"
+                  >
+                    <h4 className="text-base font-semibold">Add {selected.name}</h4>
+                    <label className="block text-sm font-medium">
+                      Quantity
+                      <Input
+                        ref={quantityRef}
+                        className="mt-1 max-w-32"
+                        inputMode="numeric"
+                        value={quantity}
+                        onChange={(event) => setQuantity(event.target.value)}
+                        required
+                      />
+                    </label>
+                    <label className="block text-sm font-medium">
+                      Notes (optional)
+                      <Textarea
+                        className="mt-1"
+                        maxLength={LIMITS.description.max}
+                        value={notes}
+                        onChange={(event) => setNotes(event.target.value)}
+                      />
+                    </label>
+                    <label className="block text-sm font-medium">
+                      Reference photo (optional, one JPEG/PNG/WebP, {LIMITS.imageBytes / (1024 * 1024)}{" "}
+                      MiB max)
+                      <Input
+                        className="mt-1"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] ?? null;
+                          if (file && file.size > LIMITS.imageBytes) {
+                            setPhotoError(
+                              `Images must be ${LIMITS.imageBytes / (1024 * 1024)} MiB or smaller.`
+                            );
+                            setPhoto(null);
+                            return;
+                          }
+                          setPhotoError(null);
+                          setPhoto(file);
+                        }}
+                      />
+                    </label>
+                    {photoError ? (
+                      <p className="text-sm text-destructive" role="alert">
+                        {photoError} You can remove the photo and continue.
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="submit" className="min-h-11">
+                        Add item
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-11"
+                        onClick={() => setPickedId(undefined)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    {notice ? (
+                      <p className="text-sm" role="status">
+                        {notice}
+                      </p>
+                    ) : null}
+                  </form>
                 ) : null}
-                <Button type="button" className="w-full" onClick={() => setPickedId(product.id)}>
-                  Add to request
-                </Button>
-              </CardContent>
-            </Card>
+              </article>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-
-      {selected ? (
-        <form onSubmit={handleAdd} className="rounded-xl border bg-card p-4 space-y-4">
-          <h3 className="text-lg font-semibold">Add {selected.name}</h3>
-          <label className="block text-sm font-medium">
-            Quantity
-            <Input
-              className="mt-1 max-w-32"
-              inputMode="numeric"
-              value={quantity}
-              onChange={(event) => setQuantity(event.target.value)}
-              required
-            />
-          </label>
-          <label className="block text-sm font-medium">
-            Notes (optional)
-            <Textarea
-              className="mt-1"
-              maxLength={2000}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-            />
-          </label>
-          <label className="block text-sm font-medium">
-            Reference photo (optional, one JPEG/PNG/WebP, 4 MiB max)
-            <Input
-              className="mt-1"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                if (file && file.size > 5 * 1024 * 1024) {
-                  setPhotoError("Images must be 4 MiB or smaller.");
-                  setPhoto(null);
-                  return;
-                }
-                setPhotoError(null);
-                setPhoto(file);
-              }}
-            />
-          </label>
-          {photoError ? (
-            <p className="text-sm text-destructive" role="alert">
-              {photoError} You can remove the photo and continue.
-            </p>
-          ) : null}
-          <div className="flex gap-2">
-            <Button type="submit">Add item</Button>
-            <Button type="button" variant="outline" onClick={() => setPickedId(undefined)}>
-              Cancel
-            </Button>
-          </div>
-          {notice ? (
-            <p className="text-sm" role="status">
-              {notice}
-            </p>
-          ) : null}
-        </form>
-      ) : null}
     </section>
   );
 }
